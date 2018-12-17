@@ -1,11 +1,5 @@
 # CHESS Tomography Extension Procedure 1.0.
 
-# Jakob Kaminsky
-
-# Cornell University
-
-## July 31, 2018
-
 ## Overview
 
 This module is an extension for tomopy 1.0.1. It allows users to process raw tomographic data
