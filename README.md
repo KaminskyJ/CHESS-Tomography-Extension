@@ -16,12 +16,11 @@ For extensive instructions, see instructions.pdf.
 ## Dependencies
 
 ```
-Software Version
-python 2.7.
-tomopy 1.0.
-matplotlib 2.1.
-ipython 5.4.
-h5py 2.7.
+python 2.7
+tomopy 1.0
+matplotlib 2.1
+ipython 5.4
+h5py 2.7
 ```
 ## Initial Data Format
 
