@@ -11,6 +11,8 @@ ease of use, while still maintaining the flexability of tomopy.
 By reading this manual and using the template, a new user should be able to complete a full
 reconstruction with no edits to any code besides the initial inputs.
 
+For extensive instructions, see instructions.pdf.
+
 ## Dependencies
 
 ```
