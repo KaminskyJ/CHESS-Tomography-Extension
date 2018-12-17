@@ -1,4 +1,4 @@
-# CHESS Tomography Extension Procedure 1.0.
+# CHESS Tomography Extension 1.0
 
 ## Overview
 
