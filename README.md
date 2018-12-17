@@ -1,8 +1,8 @@
 # CHESS Tomography Extension Procedure 1.0.
 
-## Jakob Kaminsky
+# Jakob Kaminsky
 
-## Cornell University
+# Cornell University
 
 ## July 31, 2018
 
