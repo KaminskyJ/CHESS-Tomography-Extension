@@ -1,0 +1,252 @@
+\title{CHESS Tomography Extension Procedure 1.0.1}
+\author{
+        Jakob Kaminsky \\
+                Cornell University\\
+}
+\date{\today}
+\documentclass[10pt]{article}
+\usepackage[margin= 1.25in]{geometry}
+\usepackage{float, graphicx}
+\restylefloat{table}
+
+\begin{document}
+\maketitle
+
+\section*{Overview}
+This module is an extension for tomopy 1.0.1. It allows users to process raw tomographic data
+through automation and GUIs.\\
+
+\noindent It is designed to decrease the amount of variables necessary to complete reconstructions 
+and increase ease of use, while still maintaining the flexability of tomopy.\\
+
+\noindent By reading this manual and using the template, a new user should be able to complete a full
+reconstruction with no edits to any code besides the initial inputs.
+\section*{Dependencies}
+\begin{table}[ht]
+    % title of Table
+    \centering % used for centering table
+    \begin{tabular}{c c}
+    \hline\hline %inserts double horizontal lines
+    Software & Version\\ [0.5ex] % inserts table
+    %heading
+    \hline % inserts single horizontal line
+    python & 2.7.14\\ % inserting body of the table
+    tomopy & 1.0.1\\
+    matplotlib & 2.1.0\\
+    ipython & 5.4.1\\
+    h5py & 2.7.0\\ [1ex] % [1ex] adds vertical space
+    \hline %inserts single line
+    \end{tabular}
+\end{table}
+
+\section*{Initial Data Format} There are two pieces of data that must be loaded in order for proper reconstruction: 
+the tomographic image stack, and theta values for the stack. 
+These should be in the format [elements, rows, angles, columns] and [radians] respectively.\\
+\ \\This data should be packaged into an hdf5 file as seperate data sets. This can be done using the save() method included in this module.
+\section*{Procedure}\label{Procedure}
+\section{Inputs}
+In order for the script to run, four parameters must be specified:
+\begin{enumerate}
+    \item filename: the filename of the hdf5 data \\ 
+    \textit{ex: `/nfs/chess/aux/user/jk989/data.hdf5'}
+    \item sinogramName: name of tomographic dataset (chosen when using save() function)\\
+    \textit{ex: `tomoImgs'}
+    \item thetaName: name of theta dataset (chosen when using save() function)\\
+    \textit{ex: `theta'}
+    \item moduleFolder: location of tomoFunctions module\\
+    \textit{ex: `/nfs/chess/aux/user/jk989'}
+\end{enumerate}
+\section{Loading Data}
+After the inputs are selected, now the module can be imported. After importation, loadHDF5() can be called.\\
+\begin{center} def loadHDF5(fileName,\\sinogramName = `tomoImgs',\\ thetaName = `theta')\\
+\ \\ Loads tomographic data and theta from an hdf5 file. Tomo data should be in the format [elements, rows, angles, cols]. Theta should be an array of radians.
+\end{center}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        filename & string & file to parse \\ \hline
+        (optional) sinogramName & string & name of tomographic dataset \\ \hline
+        (optional) thetaName & string & name of theta dataset \\ \hline
+    \end{tabular}
+\end{table}
+{\center \textbf{Returns:} array ([tomographic data, theta])\\}
+
+\section{Determining Bounds}
+The next step is to launchBoundHelper(). This GUI allows a user to pick the bounds of interest.
+The radiograph should specify the \textit{x} element and \textit{y} layer. It is recommended that
+the most expansive element and closest to center layer be chosen.\\
+\begin{center}
+def launchBoundHelper(radiograph,\\vMin = None,\\ vMax = None,\\ cmap = None,\\ interpolation = `none')\\
+\ \\Launches GUI which allows users to pick section of sample for evaluation.
+\end{center}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        radiograph & 2D ndarray (tomoImgs[\textit{x},:,\textit{y},:])& radiograph to display \\ \hline
+        (optional) vmin/vmax & scalar & lower/upper bound of color spectrum \\ \hline
+        (optional) cmap & Colormap & (matplotlib.colors.Colormap)\\ && function which determines color scheme \\ \hline
+        (optional) interpolation & string &  determines algo for interpolation, see\\
+         & & matplotlib.pyplot.imshow for list of algs \\ \hline
+    \end{tabular}
+\end{table}
+{\center \textbf{Returns:} instance of BoundHelper\\}
+\ \\ To chose the sample space, first select the top left point and then bottom right point. 
+If mouse is clicked and dragged, no points will be selected. This is to ensure matplotlib's zoom functionality.
+Due to the nature of the reconstruction algorithm, leave room on the left and right sides of the sample. See example:
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics[scale = .4]{/Users/jakobkaminsky/Desktop/Images/eee}
+    \end{center}
+\end{figure}
+\noindent The $x$ coordinates determine imageBounds and the $y$ coordinates determine layerBounds.
+\section{Determining Reconstruction Values}
+Now the sample can be reconstructed. The center of the image must be determined in order to get a proper reconstruction.
+However, because the top and bottom of the sample have different centers, we will need to find the center for the top of 
+layerBounds and the center for the bottom of layerBounds. The center can be determined my changing the center slider in the GUI,
+trying to optimize the clarity of the image.\\\\
+Sometimes the extremes of the layerBounds do not contain the sample, so in that case, use the layer input of the GUI to change the layer.
+However, keep the layer close to the top/bottom edge of the sample to ensure an accurate reconstruction.\\
+\begin{center} def launchValHelper(sinograms,\\ imageBounds,\\ layer,\\ layerBounds,\\ theta,\\ sigma = .1,\\ ncore = 4,\\ algorithm = `gridrec',\\ vmin = None,\\ vmax = None,\\ cmap = `binary',\\ interpolation = `none')\\
+\ \\ Launches GUI which allows users to pick reconstruction variables.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        sinograms & 4D ndarray & [elements, rows, angles, cols] \\ \hline
+        imageBounds & len 2 array & boundary of sample to be evaluated \\ \hline
+        layer & int & inital layer to be displayed\\ \hline
+        layerBounds&len 2 array&reconstruction layer bounds\\ \hline
+        theta & ndarray & list of angles in radians\\ \hline
+        (optional) sigma&float &damping param in Fourier space \\ \hline
+        (optional) ncore&int & \# of cores that will be assigned \\ \hline
+        (optional) algorithm& \{str, function\} & reconstruction algorithm\\
+        & & see tomopy.recon.algorithm for list\\ \hline
+        (optional) vmin/vmax & scalar & lower/upper bound of color spectrum \\ \hline
+        (optional) cmap & Colormap & (matplotlib.colors.Colormap)\\ && function which determines color scheme \\ \hline
+        (optional) interpolation & string &  determines algo for interpolation, see\\
+         & & matplotlib.pyplot.imshow for list of algs \\ \hline
+
+    \end{tabular}
+\end{table}
+\textbf{Returns:}  instance of ValHelper\\
+\end{center}
+\ \\ The launched GUI should look as follows:
+\begin{figure}[H]
+    \begin{center}
+        \includegraphics[scale = .5]{/Users/jakobkaminsky/Desktop/Images/fff}
+    \end{center}
+\end{figure}
+\ \\Then use getImageBounds() and getLayerBounds() to store GUI values into variables.
+\section{Calculating Centers}
+Now the centers for each layer must be calculated. If the top center and bottom center are the same, this step can be skipped. 
+Else, use calcCenters() to calculated the centers for all layers in layerBounds.
+\begin{center} 
+def calcCenters(layerBounds,\\ topCenter,\\ topLayer,\\ bottomCenter,\\ bottomLayer)\\
+\ \\ Takes the difference between topCenter and bottomCenter, assumes
+center movement is linear, and calculates a list of centers for
+layerBounds.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        layerBounds&len 2 array&reconstruction layer bounds\\ \hline
+        topLayer/bottomLayer&int&layers from top and bottom of stack w/ known centers\\ \hline
+        topCenter/bottomCenter&scalar&center vals for topLayer/bottomLayer\\ \hline
+    \end{tabular}
+\end{table}
+\textbf{Returns:} array containing extrapolated centers for layerBounds\\
+\end{center}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Reconstruction}
+Now that all parameters have been found, use the reconstruct() method to reconstruct every layer in layerBounds.
+\begin{center} def reconstruct(sinograms,\\ centers,\\ imageBounds,\\ layers,\\ theta,\\ sigma = .1,\\ ncore = 4,\\ algorithm = `gridrec')\\
+\ \\ Reconstructs object from projection data.
+Takes in list [elements, rows, angles, cols]
+or [rows, angles, cols],
+and returns ndarray representing a 3D reconstruction.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        sinograms&ndarray&3D tomographic data\\ \hline
+        centers&scalar, array&estimated location(s) of rotation axis\\ \hline
+        imageBounds&len 2 array&boundary of sample to be evaluated\\ \hline
+        layers&scalar, len 2 array&single layer or bounds of layers\\ \hline
+        theta&ndarray&list of angles in radians\\ \hline
+        (optional) sigma&float&damping param in Fourier space\\ \hline
+        (optional) ncore&int& \# of corse that will be assigned\\ \hline
+        (optional) alogirthm&{str, function}&determines algo for interpolation, see\\
+        & & matplotlib.pyplot.imshow for list of algs \\ \hline
+    \end{tabular}
+\end{table}
+\textbf{Returns:} ndarray representing multi-elemental 3D reconstructions.\\
+\end{center}
+\ \\Then use getCenter() and getLayer() to store the GUI values into variables.
+\section{Post-Reconstruction}
+There are various tools for visualizing reconstructions. The most simple is plotLayer():
+\begin{center}
+    def plotLayer(image,\\ vmin = None,\\ vmax = None,\\ area = .6,\\ cmap = `binary',\\ interpolation = `none')\\
+    \ \\ plots a 2D array
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        image &2D ndarray& image to display\\ \hline
+        (optional) vmin/vmax & scalar & lower/upper bound of color spectrum \\ \hline
+        (optional) area & (0,1] & generality of vmin/vmax estimated \\
+        &&(0 includes less pixels, 1 includes all pixels including extremes)\\ \hline
+        (optional) cmap & Colormap & (matplotlib.colors.Colormap)\\ && function which determines color scheme \\ \hline
+        (optional) interpolation & string &  determines algo for interpolation, see\\
+         & & matplotlib.pyplot.imshow for list of algs \\ \hline
+    \end{tabular}
+\end{table}
+\textbf{Returns:} AxesImage object (plot)
+\end{center}
+There is also multiSliceGiffer() and multiSliceViewer(), the former cycles
+through your reconstructed images automatically, and the latter cycling with
+keyboard presses \{j\} and \{k\}.
+\begin{center} def multiSliceGiffer(volume,\\ cmap = None)\\
+\ \\ Display that cycles through slices of a volume.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        volume&3D ndarray& volume to display\\ \hline
+        (optional) cmap & Colormap & (matplotlib.colors.Colormap)\\ && function which determines color scheme \\ \hline
+    \end{tabular}
+\end{table}
+\textbf{Returns:} AxesImage object (plot)\\
+\end{center}
+\ \\Documentation for multiSliceViewer() is omitted because it is the same as multiSliceGiffer except without the cmap parameter.\\
+
+\section{Saving Data}
+Once reconstructions have been finalized, save the array as and hdf5 file with save():\\
+\begin{center} def save(filename,\\ names,\\ data)\\ %datatype = np.float16)\\
+\ \\ Saves files as hdf5 in specified directory.
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{parameter} & \textbf{type} &\textbf{description}  \\ \hline
+        fileName&String& desired name of file\\ \hline
+        names & [String,] & list of desired names of data\\ \hline 
+        data&[ndarray,]& list of data\\ \hline
+        %(optional) datatype&type&desired datatype\\ \hline
+    \end{tabular}
+\end{table}
+\textbf{Returns:} None\\
+\end{center}
+\ \\ And the process is complete!
+\section*{Contact}\label{Contact}
+Any questions or suggestions can be sent to jk989@cornell.edu.
+\end{document}
